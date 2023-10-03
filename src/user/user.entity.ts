@@ -18,7 +18,7 @@ export class UserEntity {
   @Column({ default: '' })
   image: string;
 
-  @Column()
+  @Column({ select: true })
   password: string;
 
   @BeforeInsert()
