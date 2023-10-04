@@ -20,7 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "ts-node ./node_modules/typeorm/cli",
     "migration:run": "npm run typeorm migration:run -- -d ./src/ormconfig.ts",
-    "migration:generate": "npm run typeorm -- -d ./src/ormconfig.ts migration:generate ./src/migration/$npm_config_name",
+    "migration:generate": "npm run typeorm -- -d ./src/ormconfig.ts migration:generate ./src/migration/%npm_config_name%",
     "migration:create": "npm run typeorm -- migration:create ./src/migration/$npm_config_name",
     "migration:revert": "npm run typeorm -- -d ./src/ormconfig.ts migration:revert",
     "db:drop": "npm run typeorm -- -d ./src/ormconfig.ts schema:drop"
@@ -41,6 +41,7 @@
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
+    "slugify": "^1.6.6",
     "typeorm": "^0.3.17"
   },
   "devDependencies": {
