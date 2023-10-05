@@ -35,6 +35,34 @@ export class ArticleService {
       });
     }
 
+    // http://localhost:3000/articles?author=test
+    // جایی که ما مطمنیم که پارامتر وارد شده ما دقیقا چی هست نیازی به استفاده از Like نیستش
+
+    if (query.author) {
+      // چون ما از فایند وان استفاده میکنیم باید مطمن بشیم که اسامی استفاده شده یونیک و منحصر به فرد هستند
+      const author = await this.userRepository.findOne({
+        where: { username: query.author },
+      });
+      queryBuilder.andWhere('articles.authorId = :id', {
+        id: author.id,
+      });
+    }
+
+    if (query.favored) {
+      const author = await this.userRepository.findOne({
+        where: { username: query.favored },
+        relations: ['favorites'],
+      });
+      const ids = author.favorites.map((el) => el.id);
+      if (ids.length > 0) {
+        queryBuilder.andWhere('articles.authorId IN (:...ids)', { ids });
+      } else {
+        // این یه فالس برمیگردونه که بنا به همین یه آرایه خالی رو در نهایت به ما میده
+        queryBuilder.andWhere('1=0');
+      }
+      console.log('author : ', author);
+    }
+
     //   با استفاده از این خط کد ما اومدیم مقاله هارو از آخر به اول مرتب سازی کردیم
 
     queryBuilder.orderBy('articles.createdAt', 'DESC');
@@ -51,10 +79,25 @@ export class ArticleService {
     if (query.offset) {
       queryBuilder.offset(query.offset);
     }
+
+    let favoriteIds: number[] = [];
+
+    if (currentUserId) {
+      const currentUser = await this.userRepository.findOne({
+        where: { id: currentUserId },
+        relations: ['favorites'],
+      });
+      favoriteIds = currentUser.favorites.map((favorite) => favorite.id);
+    }
+
     // برای استفاده از این موارد ما می بایست که مقاله ها رو در آخر بگیریم مانند زیر
 
     const articles = await queryBuilder.getMany();
-    return { articles, articleCount };
+    const articleWithFavored = articles.map((article) => {
+      const favored = favoriteIds.includes(article.id);
+      return { ...article, favored };
+    });
+    return { articles: articleWithFavored, articleCount };
   }
 
   async createArticle(
@@ -124,5 +167,51 @@ export class ArticleService {
     Object.assign(article, updateArticleDto);
 
     return await this.articleRepository.save(article);
+  }
+
+  async addArticleToFavorites(
+    slug: string,
+    currentUserId: number,
+  ): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+    const user = await this.userRepository.findOne({
+      where: { id: currentUserId },
+      relations: ['favorites'],
+    });
+    const isNotFavorite =
+      user.favorites.findIndex(
+        (articleInFavorite) => articleInFavorite.id === article.id,
+      ) === -1;
+
+    if (isNotFavorite) {
+      user.favorites.push(article);
+      article.favoritesCount++;
+      await this.userRepository.save(user);
+      await this.articleRepository.save(article);
+    }
+
+    return article;
+  }
+
+  async deleteArticleFromFavorites(
+    slug: string,
+    currentUserId: number,
+  ): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+    const user = await this.userRepository.findOne({
+      where: { id: currentUserId },
+      relations: ['favorites'],
+    });
+    const articleIndex = user.favorites.findIndex(
+      (articleInFavorite) => articleInFavorite.id === article.id,
+    );
+
+    if (articleIndex >= 0) {
+      user.favorites.splice(articleIndex, 1);
+      article.favoritesCount--;
+      await this.userRepository.save(user);
+      await this.articleRepository.save(article);
+    }
+    return article;
   }
 }
