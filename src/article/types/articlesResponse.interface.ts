@@ -1,7 +1,7 @@
-import { ArticleEntity } from '../article.entity';
+import { ArticleType } from './article.type';
 
 // یه اینترفیس برای برگردوندن تمامی مقاله ها مینویسیم
 export interface ArticlesResponseInterface {
-  articles: ArticleEntity[];
+  articles: ArticleType[];
   articleCount: number;
 }
