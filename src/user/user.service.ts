@@ -18,6 +18,9 @@ export class UserService {
   ) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<UserEntity> {
+    const errorResponse = {
+      errors: {},
+    };
     const userByEmail = await this.userRepository.findOne({
       select: {
         email: true,
@@ -31,14 +34,20 @@ export class UserService {
         username: true,
       },
       where: {
-        username: createUserDto.email,
+        username: createUserDto.username,
       },
     });
+
+    if (userByEmail) {
+      errorResponse.errors['email'] = 'email has already been token';
+    }
+
+    if (userByUsername) {
+      errorResponse.errors['username'] = 'username has already been token';
+    }
+
     if (userByEmail || userByUsername) {
-      throw new HttpException(
-        'Email or Username are taken',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      throw new HttpException(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
     const newUser = new UserEntity();
     Object.assign(newUser, createUserDto);
@@ -46,6 +55,9 @@ export class UserService {
   }
 
   async login(loginUserDto: LoginUserDto): Promise<UserEntity> {
+    const errorResponse = {
+      errors: {},
+    };
     const user = await this.userRepository.findOne({
       select: {
         email: true,
@@ -55,11 +67,13 @@ export class UserService {
         email: loginUserDto.email,
       },
     });
+
     if (!user) {
-      throw new HttpException(
-        'Credentials are not valid',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      errorResponse.errors['user'] = 'Credentials are not valid';
+    }
+
+    if (!user) {
+      throw new HttpException(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
     const isPasswordCorrect = await compare(
       loginUserDto.password,
@@ -67,10 +81,11 @@ export class UserService {
     );
 
     if (!isPasswordCorrect) {
-      throw new HttpException(
-        'Credentials are not valid',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      errorResponse.errors['password'] = 'Credentials are not valid';
+    }
+
+    if (!isPasswordCorrect) {
+      throw new HttpException(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
     }
     delete user.password;
     return user;
